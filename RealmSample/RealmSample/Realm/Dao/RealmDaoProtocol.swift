@@ -18,6 +18,30 @@ protocol RealmDaoProtocol: class {
     associatedtype ModelType
     /// ローカル保存しているレルムデータ
     var datas: [RealmType]? { get set }
+    /// レルムデータ→モデル
+    func convertToModel(_ realmData: RealmType) -> ModelType
+    /// モデル→レルムデータ
+    func convertToRealm(_ modelData: ModelType) -> RealmType
+    /// 自動採番ありの新規追加
+    func post(_ realmData: RealmType)
+    /// 自動採番ありの新規追加
+    func post(_ realmDatas: [RealmType])
+    /// 自動採番ありの新規追加
+    func post(_ modelData: ModelType)
+    /// 自動採番ありの新規追加
+    func post(_ modelDatas: [ModelType])
+    /// レルムデータ更新
+    func put(_ modelData: ModelType)
+    /// レルムデータ更新
+    func put(_ modelDatas: [ModelType])
+    /// レルムデータ取得
+    func getModel() -> [ModelType]
+    /// レルムデータ取得
+    func getModel(_ id: Int) -> ModelType
+    /// レルムデータ削除
+    func delete(_ modelData: ModelType)
+    /// レルムデータ削除
+    func delete(_ modelDatas: [ModelType])
 }
 
 extension RealmDaoProtocol {
