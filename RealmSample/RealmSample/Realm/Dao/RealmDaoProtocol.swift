@@ -11,33 +11,37 @@ import RealmSwift
 
 /// レルムの共通処理です。
 /// アクションに継承して使用します。
-protocol RealmDaoProtocol: class {
+protocol RealmDaoProtocol: AnyObject {
     /// レルムデータクラス
     associatedtype RealmType: Object
     /// レルムと紐づくモデルクラス
     associatedtype ModelType
-    /// ローカル保存しているレルムデータ
-    var datas: [RealmType]? { get set }
     /// レルムデータ→モデル
     func convertToModel(_ realmData: RealmType) -> ModelType
     /// モデル→レルムデータ
     func convertToRealm(_ modelData: ModelType) -> RealmType
-    /// 自動採番ありの新規追加
+    /// Realmクラスの新規追加
     func post(_ realmData: RealmType)
-    /// 自動採番ありの新規追加
+    /// Realmクラスの複数新規追加
     func post(_ realmDatas: [RealmType])
-    /// 自動採番ありの新規追加
+    /// モデルクラスの新規追加
     func post(_ modelData: ModelType)
-    /// 自動採番ありの新規追加
+    /// モデルクラスの複数新規追加
     func post(_ modelDatas: [ModelType])
-    /// レルムデータ更新
+    /// Realmデータ更新
+    func put(_ realmData: RealmType)
+    /// Realmデータの複数更新
+    func put(_ realmDatas: [RealmType])
+    /// モデルデータ更新
     func put(_ modelData: ModelType)
-    /// レルムデータ更新
+    /// モデルデータの複数更新
     func put(_ modelDatas: [ModelType])
-    /// レルムデータ取得
+    /// モデルデータの全件取得
     func getModel() -> [ModelType]
-    /// レルムデータ取得
+    /// 指定したプライマリキーのモデルデータの取得
     func getModel(_ id: Int) -> ModelType
+    /// レルムデータ全件削除
+    func deleteAll()
     /// レルムデータ削除
     func delete(_ modelData: ModelType)
     /// レルムデータ削除
@@ -46,10 +50,12 @@ protocol RealmDaoProtocol: class {
 
 extension RealmDaoProtocol {
     
-    /// レルムデータを追加します
+    // MARK: - 新規追加
+    
+    /// レルムデータを複数追加します
     ///
     /// - Parameter realmDatas : レルムデータ
-    public func corePost(_ realmDatas: [RealmType]) {
+    public func post(_ realmDatas: [RealmType]) {
         do {
             let realm = try Realm()
             for realmData in realmDatas {
@@ -57,8 +63,6 @@ extension RealmDaoProtocol {
                 try realm.write {
                     realm.add(_realmData)
                 }
-                // ローカルにも設定
-                addDatas(_realmData)
             }
         } catch {
             Logger.debug(error.localizedDescription)
@@ -68,19 +72,39 @@ extension RealmDaoProtocol {
     /// レルムデータを追加します
     ///
     /// - Parameter realmDatas: レルムデータ
-    public func corePost(_ realmData: RealmType) {
+    public func post(_ realmData: RealmType) {
         let _realmData = realmData
         do {
             let realm = try Realm()
             try realm.write {
                 realm.add(_realmData)
             }
-            // ローカルにも設定
-            addDatas(_realmData)
         } catch {
             Logger.debug(error.localizedDescription)
         }
     }
+    
+    /// モデルデータを追加します
+    ///
+    /// - Parameter modelData: モデルデータ
+    public func post(_ modelData: ModelType) {
+        let realmData = convertToRealm(modelData)
+        post(realmData)
+    }
+    
+    /// モデルデータを複数追加します
+    ///
+    /// - Parameter modelData: モデルデータ
+    public func post(_ modelDatas: [ModelType]) {
+        var realmDatas: [RealmType] = []
+        modelDatas.forEach {
+            let realmData = convertToRealm($0)
+            realmDatas.append(realmData)
+        }
+        post(realmDatas)
+    }
+    
+    // MARK: - 更新
     
     /// データを更新します
     /// - Parameter realmDatas: レルムデータ
@@ -110,28 +134,27 @@ extension RealmDaoProtocol {
         }
     }
     
+    // MARK: - 取得
+    
     /// レルムデータを取得します
     ///
     /// - Returns: レルムデータ
     public func get() -> [RealmType] {
-        // すでに取得すみならそれを返す
-        if let tmpDatas = datas {
-            return tmpDatas;
-        }
         // 初回のみ取得しにいく
-        var tmpDatas: [RealmType] = []
+        var datas: [RealmType] = []
         do {
             let realm = try Realm()
             let realmClasses = realm.objects(RealmType.self)
             for realmClass in realmClasses {
-                tmpDatas.append(realmClass as RealmType)
+                datas.append(realmClass as RealmType)
             }
         } catch {
             Logger.debug(error.localizedDescription)
         }
-        datas = tmpDatas
-        return tmpDatas
+        return datas
     }
+    
+    // MARK: - 削除
     
     /// レルムデータを全て削除します
     public func deleteAll() {
@@ -185,30 +208,23 @@ extension RealmDaoProtocol {
         }
     }
     
+    // MARK: - 採番
+    
     /// プライマリキーを自動採番します
     /// - Parameter model: レルムデータ
-    public func autoIncrement<T: Object>(model: T) -> Int {
-        guard let key = T.primaryKey() else {
+    public func autoIncrement(realmModel: RealmType) -> Int {
+        guard let key = RealmType.primaryKey() else {
             Logger.debug("このオブジェクトにはプライマリキーがありません")
             return 0
         }
         // Realmのインスタンスを取得
         let realm = try! Realm()
         // 最後のプライマリーキーを取得
-        if let last = realm.objects(T.self).sorted(byKeyPath: "id", ascending: true).last,
+        if let last = realm.objects(RealmType.self).sorted(byKeyPath: "id", ascending: true).last,
             let lastId = last[key] as? Int {
             return lastId + 1 // 最後のプライマリキーに+1した数値を返す
         } else {
             return 0  // 初めて使う際は0を返す
         }
-    }
-    
-    /// レルムデータをローカルに保存します
-    /// - Parameter realmData: レルムデータ
-    private func addDatas(_ realmData: RealmType) {
-        if datas == nil {
-            datas = []
-        }
-        datas?.append(realmData)
     }
 }

@@ -41,8 +41,6 @@ class SampleAction: RealmDaoProtocol {
     typealias RealmType = RealmSample
     /// レルムデータに紐づくモデルクラス
     typealias ModelType = Sample
-    /// ローカルデータ
-    var datas: [RealmType]? = nil
     /// シングルトン
     static let shared = SampleAction()
     
@@ -66,44 +64,49 @@ class SampleAction: RealmDaoProtocol {
         return realmData
     }
     
-    // MARK: - アクション
+    // MARK: - 新規追加
     
     /// レルムにデータを新規追加します
     /// - Parameter realmData: レルムデータクラス
-    public func post(_ realmData: RealmType) {
+    public func postRealm(_ realmData: RealmType) {
         let _realmData = realmData
-        _realmData.id = autoIncrement(model: realmData)
-        corePost(_realmData)
+        _realmData.id = autoIncrement(realmModel: realmData)
+        post(_realmData)
     }
     
     /// レルムにデータを新規追加します
     /// - Parameter realmData: レルムデータクラス
-    public func post(_ realmDatas: [RealmType]) {
+    public func postRealms(_ realmDatas: [RealmType]) {
         var _realmDatas: [RealmType] = []
         realmDatas.forEach {
             let _realmData = $0
-            _realmData.id = autoIncrement(model: $0) + _realmDatas.count
+            _realmData.id = autoIncrement(realmModel: $0) + _realmDatas.count
             _realmDatas.append(_realmData)
         }
-        corePost(_realmDatas)
+        post(_realmDatas)
     }
     
     /// レルムにデータを新規追加します
     /// - Parameter modelData: モデルクラス
     public func post(_ modelData: ModelType) {
         let realmData = convertToRealm(modelData)
+        realmData.id = autoIncrement(realmModel: realmData)
         post(realmData)
     }
     
     /// レルムにデータを新規追加します
     /// - Parameter modelData: モデルクラス
     public func post(_ modelDatas: [ModelType]) {
-        var _realmDatas: [RealmType] = []
+        var realmDatas: [RealmType] = []
         modelDatas.forEach {
-            _realmDatas.append(convertToRealm($0))
+            let realmData = convertToRealm($0)
+            realmData.id = autoIncrement(realmModel: realmData) + realmDatas.count
+            realmDatas.append(realmData)
         }
-        post(_realmDatas)
+        post(realmDatas)
     }
+    
+    // MARK: - 更新
     
     /// レルムにデータを更新します
     /// - Parameter modelData: モデルクラス
@@ -121,6 +124,8 @@ class SampleAction: RealmDaoProtocol {
         }
         put(realmDatas)
     }
+    
+    // MARK: - 取得
     
     /// レルムからデータを取得します
     public func getModel() -> [ModelType] {
@@ -141,6 +146,8 @@ class SampleAction: RealmDaoProtocol {
         }
         return modelData
     }
+    
+    // MARK: - 削除
     
     /// レルムのデータを削除します
     /// - Parameter modelData: モデルクラス

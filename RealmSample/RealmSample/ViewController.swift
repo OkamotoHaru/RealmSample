@@ -49,7 +49,7 @@ class ViewController: UIViewController {
         // モデル全削除（初期化）
         SampleAction.shared.deleteAll()
         // モデル新規追加
-        SampleAction.shared.post(sample)
+        SampleAction.shared.postModel(sample)
         // モデル取得
         guard let modelData = SampleAction.shared.getModel().first else {
             id.text = "unknown"
